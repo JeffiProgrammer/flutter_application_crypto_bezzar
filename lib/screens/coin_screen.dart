@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_application_crypto_bezzar/data/constant/constants.dart';
 
 import '../data/model/crypto.dart';
@@ -13,6 +14,7 @@ class CoinScreen extends StatefulWidget {
 
 class _CoinScreenState extends State<CoinScreen> {
   List<Coin>? coins;
+  bool loadingTextVisibility = false;
   @override
   void initState() {
     // TODO: implement initState
@@ -33,19 +35,54 @@ class _CoinScreenState extends State<CoinScreen> {
       ),
       backgroundColor: blackColor,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            List<Coin> freshData = await _getData();
-            setState(() {
-              coins = freshData;
-            });
-          },
-          child: ListView.builder(
-            itemCount: coins!.length,
-            itemBuilder: (context, index) => _getListTileItems(coins![index]),
-          ),
-          backgroundColor: greenColor,
-          color: blackColor,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: TextField(
+                  onChanged: (value) {
+                    _filterCoins(value);
+                  },
+                  decoration: InputDecoration(
+                      hintText: "!اسم رمز ارز معتبر خود را سرچ کنید ",
+                      hintStyle: TextStyle(color: Colors.white),
+                      border: OutlineInputBorder(
+                        borderSide:
+                            BorderSide(width: 0, style: BorderStyle.none),
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      filled: true,
+                      fillColor: greenColor),
+                ),
+              ),
+            ),
+            Visibility(
+              visible: loadingTextVisibility,
+              child: Text(
+                '...در حال آپدیت اطلاعات رمز ارزها',
+                style: TextStyle(color: greenColor),
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  List<Coin> freshData = await _getData();
+                  setState(() {
+                    coins = freshData;
+                  });
+                },
+                child: ListView.builder(
+                  itemCount: coins!.length,
+                  itemBuilder: (context, index) =>
+                      _getListTileItems(coins![index]),
+                ),
+                backgroundColor: greenColor,
+                color: blackColor,
+              ),
+            )
+          ],
         ),
       ),
     );
@@ -127,5 +164,27 @@ class _CoinScreenState extends State<CoinScreen> {
 
   Color _getChangeTextColor(double changePercent) {
     return changePercent <= 0 ? redColor : greenColor;
+  }
+
+  Future<void> _filterCoins(String coinName) async {
+    List<Coin> searchedCoinNameList = [];
+    if (coinName.isEmpty) {
+      setState(() {
+        loadingTextVisibility = true;
+      });
+      var result = await _getData();
+      setState(() {
+        coins = result;
+        loadingTextVisibility = false;
+      });
+      return;
+    }
+    searchedCoinNameList = coins!.where((element) {
+      return element.name.toLowerCase().contains(coinName.toLowerCase());
+    }).toList();
+
+    setState(() {
+      coins = searchedCoinNameList;
+    });
   }
 }
